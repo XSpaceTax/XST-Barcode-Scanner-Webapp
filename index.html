@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Barcode Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #reader { width: 100vw; height: 80vh; max-width: 800px; margin: auto; }
+        #result { margin-top: 20px; font-size: 20px; font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+    <h2>Scan Barcode/QR Code</h2>
+    <div id="reader"></div>
+    <p id="result">Waiting for scan...</p>
+    <audio id="beep" src="https://www.soundjay.com/button/beep-09.wav"></audio>
+    
+    <script>
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbw7TkLwWPIuJcm9aFYy61Suacbo_UUnW_413EhRszXnlwN8rO2Q5dhCCCWyxkpsSxEU/exec";
+        let lastScannedTime = 0;
+
+        function onScanSuccess(decodedText) {
+            let currentTime = Date.now();
+            if (currentTime - lastScannedTime < 1000) return; // Prevent duplicate scans within 1 second
+            lastScannedTime = currentTime;
+
+            document.getElementById("result").innerText = "Scanned: " + decodedText;
+            
+            // 🔊 LOUD "BEEP" SOUND IMMEDIATELY AFTER SCAN
+            let beepSound = document.getElementById("beep");
+            beepSound.volume = 1.0; // 100% volume
+            beepSound.play().catch(error => console.log("Audio play error: ", error));
+
+            fetch(scriptUrl, {
+                method: "POST",
+                body: JSON.stringify({ code: decodedText }),
+                headers: { "Content-Type": "application/json" }
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById("result").innerText += " (✔️ SAVED)";
+                console.log("Success: ", data);
+            })
+            .catch(error => {
+                document.getElementById("result").innerText += " (❌ FAILED)";
+                console.error("Error: ", error);
+            });
+        }
+
+        new Html5Qrcode("reader").start(
+            { facingMode: "environment" },
+            { fps: 15, qrbox: { width: 600, height: 600 } },
+            onScanSuccess
+        );
+    </script>
+</body>
+</html>
